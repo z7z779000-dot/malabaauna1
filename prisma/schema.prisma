@@ -1,0 +1,124 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
+}
+
+enum Role {
+  ADMIN
+  FIELD_OWNER
+  CUSTOMER
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id               String             @id @default(uuid())
+  name             String
+  email            String             @unique
+  password         String
+  phone            String?
+  role             Role               @default(CUSTOMER)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  fields           Field[]
+  bookings         Booking[]
+  reviews          Review[]
+  notifications    Notification[]
+  trustScoreHistory TrustScoreHistory[]
+}
+
+model Field {
+  id           String    @id @default(uuid())
+  name         String
+  description  String?
+  location     String
+  pricePerHour Float
+  images       String[]
+  isAvailable  Boolean   @default(true)
+  ownerId      String
+  owner        User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  bookings     Booking[]
+  reviews      Review[]
+}
+
+model Booking {
+  id           String        @id @default(uuid())
+  date         DateTime
+  startTime    String
+  endTime      String
+  totalPrice   Float
+  status       BookingStatus @default(PENDING)
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fieldId      String
+  field        Field         @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  payment      Payment?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  notifications Notification[]
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  amount        Float
+  status        PaymentStatus @default(PENDING)
+  paymentMethod String
+  transactionId String?
+  bookingId     String        @unique
+  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int
+  comment   String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fieldId   String
+  field     Field    @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model TrustScoreHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  change    Int      
+  reason    String
+  bookingId String?
+  createdAt DateTime @default(now())
+}
